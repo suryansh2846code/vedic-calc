@@ -9,3 +9,6 @@ htmlcov/
 site/
 .env
 reports/
+
+# calc-api subproject
+calc-api/.venv/

@@ -1,0 +1,38 @@
+[project]
+name = "calc-api"
+version = "0.1.0"
+description = "Thin stateless HTTP service over the vedic_calc engine"
+readme = "README.md"
+license = "AGPL-3.0-or-later"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.30",
+    "pydantic>=2.10",
+    "vedic-calc",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "httpx>=0.28",
+]
+
+# The engine lives in the parent directory of this subproject. A path
+# dependency keeps the two in lockstep: a change to the engine is picked up
+# without a reinstall, and there is exactly one copy on disk.
+[tool.uv.sources]
+vedic-calc = { path = "..", editable = true }
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/calc_api"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

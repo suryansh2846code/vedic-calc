@@ -1,0 +1,50 @@
+vedic-calc — fork
+=================
+
+This repository is a fork of:
+
+    https://github.com/atolat/vedic-calc
+    Copyright (c) atolat <arpantolat30@gmail.com>
+    Licensed under the GNU Affero General Public License v3.0 or later
+
+All original copyright in the `src/vedic_calc/` engine, its tests, benchmarks,
+and documentation remains with the upstream author. This fork is distributed
+under the same licence, AGPL-3.0-or-later. A copy is in LICENSE.
+
+
+Modifications made in this fork
+-------------------------------
+
+As required by AGPL-3.0 section 5(a), the changes made relative to upstream
+are listed here. See the git history for exact diffs.
+
+* Added `calc-api/` — a thin, stateless HTTP service exposing the engine's
+  public functions as a JSON API. AGPL-3.0, same as the engine.
+
+(Further engine modifications will be appended here as they land. Each is also
+offered upstream as a pull request.)
+
+
+Third-party components
+----------------------
+
+* Swiss Ephemeris, via `pyswisseph` — Copyright (c) Astrodienst AG.
+  Dual-licensed: AGPL-3.0, or a commercial Professional Edition licence.
+  This fork and the service in `calc-api/` are distributed under AGPL-3.0,
+  which satisfies the free arm of that dual licence. No commercial licence
+  from Astrodienst is required for this repository.
+  https://www.astro.com/swisseph/
+
+
+Network use — AGPL section 13
+-----------------------------
+
+If you run this software, modified or not, so that users interact with it
+remotely over a network, section 13 obliges you to offer those users access to
+the corresponding source. The complete source of this fork, including
+`calc-api/`, is available at:
+
+    https://github.com/suryansh2846code/vedic-calc
+
+Applications served by a deployment of `calc-api/` link to this repository from
+their user-facing interface in order to satisfy that obligation.
