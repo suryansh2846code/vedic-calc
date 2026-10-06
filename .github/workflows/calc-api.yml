@@ -1,0 +1,80 @@
+name: calc-api
+
+on:
+  push:
+    branches: [main]
+    paths: ['calc-api/**', 'src/**', 'pyproject.toml', '.github/workflows/calc-api.yml']
+  pull_request:
+    paths: ['calc-api/**', 'src/**', 'pyproject.toml']
+
+jobs:
+  test:
+    name: Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+      - name: Install
+        working-directory: calc-api
+        run: uv sync --extra dev
+      - name: Tests (all endpoints x 10 benchmark charts)
+        working-directory: calc-api
+        run: uv run pytest -q
+
+  docker:
+    name: Docker image
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      # Built from the repo root: the engine in ./src is a path dependency of
+      # calc-api, so it has to be inside the build context.
+      - name: Build
+        run: docker build -f calc-api/Dockerfile -t calc-api:ci .
+
+      - name: Boot it and verify behaviour, not just that it started
+        run: |
+          docker run -d --name calc-api -p 8800:8800 \
+            -e CALC_API_KEY=ci-secret calc-api:ci
+          for i in $(seq 1 30); do
+            curl -fsS http://127.0.0.1:8800/healthz >/dev/null 2>&1 && break
+            sleep 1
+          done
+          ./calc-api/verify_deployment.sh http://127.0.0.1:8800 ci-secret
+
+      - name: Container results must match the host exactly
+        run: |
+          # The container has no Swiss Ephemeris data files and neither does the
+          # host, so both should fall back to the same Moshier analytic
+          # ephemeris. This asserts it rather than assuming it — a data file
+          # appearing on only one side would shift every planet slightly and
+          # silently.
+          BODY='{"birth":{"year":1990,"month":3,"day":15,"hour":10,"minute":30,
+                 "latitude":19.076,"longitude":72.878,"timezone_offset":5.5}}'
+          curl -fsS -H 'X-API-Key: ci-secret' -H 'Content-Type: application/json' \
+            -d "$BODY" http://127.0.0.1:8800/v1/chart \
+            | python3 -c 'import json,sys; print(json.dumps(json.load(sys.stdin)["data"],sort_keys=True))' \
+            > container.json
+
+          docker exec calc-api python -c "
+          import swisseph as swe
+          jd = swe.julday(1990, 3, 15, 5.0)
+          assert swe.calc_ut(jd, swe.SATURN)[1] & swe.FLG_MOSEPH, \
+              'container is using a different ephemeris than expected'
+          print('container ephemeris: Moshier, as expected')
+          "
+
+          python3 -c "
+          import json
+          d = json.load(open('container.json'))
+          moon = d['planets']['MOON']
+          assert moon['sign'] == 'LIBRA', moon
+          assert moon['nakshatra_info']['nakshatra'] == 'SWATI', moon
+          assert abs(moon['longitude'] - 192.5501) < 0.001, moon['longitude']
+          print('container matches host longitudes to 0.001 deg')
+          "
+
+      - if: always()
+        run: docker logs calc-api || true

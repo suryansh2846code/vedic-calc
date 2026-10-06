@@ -18,7 +18,7 @@ and belongs to the consumer, which has one.
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 from vedic_calc.core.constants import Ayanamsa, Nakshatra, Sign
@@ -283,6 +283,29 @@ class PrashnaRequest(DateTimePlace):
 
     query_house: int = Field(
         ge=1, le=12, description="House the question concerns, e.g. 10 for career"
+    )
+
+
+class DateOnly(_Base):
+    """A bare calendar date, for calculations that need nothing else."""
+
+    year: int = Field(ge=-3000, le=3000)
+    month: int = Field(ge=1, le=12)
+    day: int = Field(ge=1, le=31)
+
+
+class RenderRequest(_Base):
+    """A request to draw the chart.
+
+    ``style`` is a tradition, not a theme: South Indian fixes the signs in place
+    and moves the houses; North Indian fixes the houses and moves the signs.
+    """
+
+    birth: BirthData
+    format: Literal["svg", "ascii"] = Field(default="svg")
+    style: Literal["south", "north"] = Field(default="south")
+    place_name: str = Field(
+        default="", max_length=100, description="Optional label drawn on the SVG"
     )
 
 

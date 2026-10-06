@@ -1,0 +1,49 @@
+# Fly.io deployment for calc-api.
+#
+# Rename `app` before first deploy — it must be globally unique on Fly.
+# The service is stateless, so there are no volumes, no migrations, and
+# scaling out is just more machines.
+
+app = "placeholder-calc-api"
+primary_region = "bom"   # Mumbai — closest to the launch market
+
+[build]
+  dockerfile = "calc-api/Dockerfile"
+  # Built from the repo root, because the engine in ../src is a path dependency.
+  # `fly deploy` must therefore be run from the repository root with
+  #   fly deploy -c calc-api/fly.toml
+
+[env]
+  CALC_API_HOST = "0.0.0.0"
+  CALC_API_PORT = "8800"
+
+# CALC_API_KEY is a secret, never an [env] value:
+#   fly secrets set CALC_API_KEY=... -c calc-api/fly.toml
+
+[http_service]
+  internal_port = 8800
+  force_https = true
+
+  # Stateless and deterministic, so a cold start costs only latency — never
+  # correctness. Scaling to zero is safe and keeps idle cost at nothing.
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 0
+
+  # The engine is CPU-bound C. Beyond roughly this many in-flight requests per
+  # machine, latency degrades faster than throughput improves.
+  [http_service.concurrency]
+    type = "requests"
+    soft_limit = 20
+    hard_limit = 40
+
+  [[http_service.checks]]
+    interval = "30s"
+    timeout = "5s"
+    grace_period = "10s"
+    method = "GET"
+    path = "/healthz"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"

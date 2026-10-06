@@ -99,5 +99,67 @@ renders enums by `.name`, so a chart arrives as
 ## Tests
 
 ```bash
-uv run pytest calc-api/tests -q
+cd calc-api && uv run pytest -q
 ```
+
+389 tests. The bulk is a sweep of **every endpoint across all ten benchmark
+charts** from `../benchmarks/accuracy.py` — chosen for spread: southern
+hemisphere, negative UTC offsets, a near-midnight birth, UTC+0. Each combination
+asserts a 200 with non-empty data, determinism across repeat requests, and that
+no raw enum value leaked.
+
+`test_all_charts.py::test_every_endpoint_is_covered` compares the swept paths
+against the app's own route table, so a new endpoint cannot be added without
+being covered.
+
+## Deploying
+
+Stateless, so there is nothing to migrate and scaling out is just more machines.
+
+```bash
+# from the REPOSITORY ROOT, not calc-api/ —
+# the engine in ./src is a path dependency and must be in the build context
+
+fly auth login
+fly launch --no-deploy -c calc-api/fly.toml          # pick a unique app name
+fly secrets set CALC_API_KEY="$(openssl rand -hex 32)" -c calc-api/fly.toml
+./calc-api/deploy.sh                                  # tests, deploy, verify
+```
+
+`deploy.sh` refuses to ship a build the tests reject, then runs
+`verify_deployment.sh` against the live URL. You can point that at anything:
+
+```bash
+./calc-api/verify_deployment.sh https://your-app.fly.dev "$CALC_API_KEY"
+```
+
+It checks four things a plain uptime probe would miss: the version endpoint
+reports a fork build, the AGPL section 13 source offer is advertised, a known
+chart computes correctly with enums as names, and two identical requests are
+byte-identical — which on a multi-worker deployment also means identical
+*across worker processes*.
+
+### No ephemeris data files
+
+The image ships none, and does not need any. Positions resolve through
+swisseph's built-in Moshier analytic ephemeris, compiled into the pyswisseph
+wheel — `calc_ut` returns an iflag with `SEFLG_MOSEPH` set. Accuracy is far
+finer than any astrological distinction (a nakshatra pada boundary is 50
+arcminutes), and the benchmark agrees with two commercial reference APIs on
+1015/1015 checks, which settles it empirically.
+
+The practical consequences: a small image, no 100MB+ download at build time,
+and no risk of the container and a dev machine disagreeing because only one of
+them found a data file. CI asserts the container uses the same ephemeris and
+reproduces host longitudes to 0.001°.
+
+### Deployment notes
+
+| Concern | Choice | Why |
+|---|---|---|
+| Workers | 2 processes | The engine is CPU-bound C, so concurrency must come from processes, not threads. Raise with the instance size. |
+| Scale to zero | enabled | Stateless and deterministic, so a cold start costs latency, never correctness. |
+| Concurrency limit | soft 20 / hard 40 | Past this, latency degrades faster than throughput improves. |
+| Region | `bom` (Mumbai) | Closest to the launch market. |
+| Auth | `CALC_API_KEY` secret | Plus network restriction to the one consumer. `/healthz` and `/v1/version` stay open for probes. |
+| User | uid 10001, non-root | No state to protect, but it parses untrusted JSON. |

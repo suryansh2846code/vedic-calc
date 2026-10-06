@@ -40,6 +40,11 @@ are listed here. See the git history for exact diffs.
   corrected two comparisons that compared unlike things — a natal indicator
   against a current transit, and a strict reading against an umbrella one.
 
+* Added `calc-api/Dockerfile`, `fly.toml`, `deploy.sh` and
+  `verify_deployment.sh` — container and deployment configuration for the
+  service above. The image carries LICENCE and NOTICE, and the running service
+  advertises its source at `GET /` to satisfy AGPL section 13.
+
 (Further engine modifications will be appended here as they land. Each is also
 offered upstream as a pull request.)
 

@@ -23,7 +23,7 @@ from fastapi.responses import JSONResponse
 
 from calc_api import __version__
 from calc_api.deps import require_api_key
-from calc_api.routers import matching, meta, natal, systems, timing
+from calc_api.routers import matching, meta, natal, special, systems, timing
 
 app = FastAPI(
     title="calc-api",
@@ -38,7 +38,13 @@ app = FastAPI(
 # Health and version are unauthenticated so that load balancers and deploy
 # tooling can probe them. Everything that computes requires the shared secret.
 app.include_router(meta.router)
-for computational_router in (natal.router, timing.router, matching.router, systems.router):
+for computational_router in (
+    natal.router,
+    timing.router,
+    matching.router,
+    systems.router,
+    special.router,
+):
     app.include_router(computational_router, dependencies=[Depends(require_api_key)])
 
 
