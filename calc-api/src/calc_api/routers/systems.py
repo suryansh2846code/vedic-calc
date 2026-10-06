@@ -21,10 +21,69 @@ from vedic_calc import (
     evaluate_prashna,
 )
 
+from vedic_calc.core.constants import Planet, Sign
+
 from calc_api.envelope import envelope
 from calc_api.models import ChartOnlyRequest, NumerologyRequest, PrashnaRequest
 from calc_api.routers.natal import _natal
 from calc_api.serialize import to_jsonable
+
+# ─────────────────────────────────────────────────────────────────────────────
+# KP integer fields that are really enums.
+#
+# The engine's KP types declare these as plain ``int`` with a comment saying
+# "Planet enum value", rather than as ``Planet``/``Sign``. Because the values
+# carry no enum type, ``to_jsonable`` cannot render them by name and they would
+# reach the caller as raw Swiss Ephemeris planet ids and 1-based sign indices —
+# breaking this service's documented guarantee that enums are always names.
+#
+# Translating here keeps that guarantee. The better long-term fix is for the
+# engine to type these fields properly; that is queued as an upstream PR.
+# ─────────────────────────────────────────────────────────────────────────────
+KP_PLANET_FIELDS = frozenset(
+    {"planet", "sign_lord", "star_lord", "sub_lord", "sub_sub_lord"}
+)
+KP_SIGN_FIELDS = frozenset({"sign"})
+
+
+def _name_kp_enums(value: Any) -> Any:
+    """Recursively rename KP integer enum fields to their symbolic names.
+
+    Args:
+        value: Already-JSON-safe KP payload from ``to_jsonable``.
+
+    Returns:
+        The same structure with planet and sign integers replaced by names.
+
+    Example:
+        >>> _name_kp_enums({"planet": 0, "sign": 12, "longitude": 330.6})
+        {'planet': 'SUN', 'sign': 'PISCES', 'longitude': 330.6}
+    """
+    if isinstance(value, dict):
+        out: dict[str, Any] = {}
+        for key, inner in value.items():
+            if key in KP_PLANET_FIELDS and isinstance(inner, int):
+                out[key] = _safe_enum_name(Planet, inner)
+            elif key in KP_SIGN_FIELDS and isinstance(inner, int):
+                out[key] = _safe_enum_name(Sign, inner)
+            else:
+                out[key] = _name_kp_enums(inner)
+        return out
+    if isinstance(value, list):
+        return [_name_kp_enums(item) for item in value]
+    return value
+
+
+def _safe_enum_name(enum_cls: type, raw: int) -> Any:
+    """Return an enum member's name, or the original value if it is out of range.
+
+    Falls back rather than raising: an unexpected id is a reason to return
+    something a caller can see and report, not to fail the whole request.
+    """
+    try:
+        return enum_cls(raw).name
+    except ValueError:
+        return raw
 
 router = APIRouter(prefix="/v1", tags=["systems"])
 
@@ -55,7 +114,10 @@ async def kp(req: ChartOnlyRequest) -> dict[str, Any]:
     # planets, so there is nothing to add here. The standalone
     # get_kp_significators() helper takes a BirthChart rather than a
     # KPChartResult and is for callers that have only the former.
-    return envelope(to_jsonable(chart), b.ayanamsa.upper())
+    #
+    # _name_kp_enums is required because the engine types these fields as int;
+    # see the note above its definition.
+    return envelope(_name_kp_enums(to_jsonable(chart)), b.ayanamsa.upper())
 
 
 @router.post("/prashna")

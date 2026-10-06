@@ -16,7 +16,10 @@ from datetime import datetime
 
 import pytest
 from vedic_calc import calculate_chart
-from vedic_calc.core.constants import Ayanamsa, Planet
+from vedic_calc.core.constants import Ayanamsa, Planet, Sign
+
+# Sign names, for asserting that KP does not leak 1-based sign indices.
+SIGN_NAMES_KP = {s.name for s in Sign}
 
 
 class TestMeta:
@@ -250,6 +253,25 @@ class TestSystems:
         # KPChartResult is returned flat — it already carries everything.
         assert data["planets"] and data["cusps"]
         assert "significators" in data and "ruling_planets" in data
+
+    def test_kp_enums_are_names_not_raw_integers(self, client, birth):
+        """The engine types KP lords as plain int; the wrapper must still name them.
+
+        Without this, a caller receives ``"sub_lord": 2`` and has no way to learn
+        that means Jupiter without reproducing the engine's numbering — which is
+        exactly the leak the enum-naming guarantee exists to prevent.
+        """
+        data = client.post("/v1/kp", json={"birth": birth}).json()["data"]
+        planets = data["planets"]
+        assert isinstance(planets, list), "KP returns a list, not a mapping"
+
+        first = planets[0]
+        for field in ("planet", "sign_lord", "star_lord", "sub_lord", "sub_sub_lord"):
+            assert isinstance(first[field], str), (
+                f"KP {field} leaked as {first[field]!r} rather than a name"
+            )
+        assert first["sign"] in SIGN_NAMES_KP
+        assert first["planet"] == "SUN"
 
     def test_jaimini(self, client, birth):
         resp = client.post("/v1/jaimini", json={"birth": birth})

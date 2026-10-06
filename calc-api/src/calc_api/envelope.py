@@ -22,10 +22,12 @@ from calc_api import __version__ as _api_version
 # Bump this by hand whenever a change to the engine or to this service alters
 # any computed output. The git commit below disambiguates builds, but a
 # deliberate marker is what consumers key their caches on.
+# Revision 3: KP planet and sign fields are now rendered as names rather than
+# raw integers, so the "enums are always names" guarantee holds there too.
 # Revision 2: SadeSatiResult gained is_sade_sati / is_small_panoti /
-# is_ashtama_shani, and DoshaResult gained convention / basis. Both change
-# response payloads, so consumer caches must invalidate.
-ENGINE_REVISION = 2
+# is_ashtama_shani, and DoshaResult gained convention / basis.
+# Each changes response payloads, so consumer caches must invalidate.
+ENGINE_REVISION = 3
 
 
 @lru_cache(maxsize=1)

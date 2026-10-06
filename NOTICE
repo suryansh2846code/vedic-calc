@@ -45,6 +45,14 @@ are listed here. See the git history for exact diffs.
   service above. The image carries LICENCE and NOTICE, and the running service
   advertises its source at `GET /` to satisfy AGPL section 13.
 
+* `calc-api/`: KP planet and sign fields are rendered as symbolic names rather
+  than raw integers. The engine's KP types declare `planet`, `sign`, `sign_lord`,
+  `star_lord`, `sub_lord` and `sub_sub_lord` as plain `int` (with a comment
+  saying "Planet enum value"), so they carried no enum type and reached callers
+  as Swiss Ephemeris ids and 1-based sign indices. Translating them in the
+  wrapper restores the documented guarantee that enums are always names. An
+  upstream PR typing those fields properly would be the better fix.
+
 (Further engine modifications will be appended here as they land. Each is also
 offered upstream as a pull request.)
 
