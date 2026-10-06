@@ -11,7 +11,8 @@ This module detects 6 classical doshas:
     3. Pitru Dosha — Affliction to the Sun / 9th house (father/ancestors)
     4. Grahan Dosha — Eclipse-related affliction (luminaries with nodes)
     5. Guru Chandal Dosha — Jupiter conjunct Rahu (weakened wisdom)
-    6. Shani Dosha — Saturn near natal Moon (Sade Sati indicator)
+    6. Shani Dosha — Saturn near natal Moon at birth (NATAL indicator;
+       for current Sade Sati use chart.sade_sati instead)
 
 Each dosha check returns a DoshaResult with is_present, severity, and any
 applicable cancellation factors. detect_doshas() always returns all 6 results,
@@ -164,8 +165,21 @@ def _detect_kaal_sarpa(chart: BirthChart) -> DoshaResult:
        This matches the common commercial software interpretation where
        planetary conjunction with a node doesn't break the yoga.
 
-    Note: Kalsarpa Dosha is NOT found in BPHS or any classical text.
-    It is a later tradition with varying definitions across sources.
+    The convention applied is reported on the result as
+    ``convention="hemmed_strict_or_partial"``, and the per-planet split is
+    reported in ``basis``. Both matter because this dosha is contested.
+
+    Note: Kalsarpa Dosha is NOT found in BPHS or any classical text. It is a
+    later tradition with varying definitions across sources.
+
+    **Known reference disagreement.** AstrologyAPI.com reports Kalsarpa present
+    on several charts where the seven planets are plainly split across both
+    sides of the nodal axis. On the "Varanasi 1988" benchmark chart the split is
+    5 versus 2 by degree, and still 4 versus 1 after excluding the two planets
+    conjunct a node by sign — planets on both sides under either reading. No
+    definition of "all planets hemmed between the nodes" admits that, so this
+    implementation does not match the reference and should not be changed to.
+    See ``docs/accuracy.md``.
     """
     rahu_lon = chart.planets[Planet.RAHU].longitude
     ketu_lon = chart.planets[Planet.KETU].longitude
@@ -257,12 +271,27 @@ def _detect_kaal_sarpa(chart: BirthChart) -> DoshaResult:
         else "Kaal Sarpa Dosha not present."
     )
 
+    # The evidence, so a caller can show why — and so a disagreement with other
+    # software is diagnosable rather than mysterious.
+    basis = [
+        f"Rahu in {rahu_sign.name}, Ketu in {ketu_sign.name}",
+        f"By degree: {in_rahu_ketu_arc} planet(s) in the Rahu->Ketu arc, "
+        f"{in_ketu_rahu_arc} in the Ketu->Rahu arc",
+    ]
+    if not full:
+        basis.append(
+            f"Excluding {on_axis} planet(s) conjunct a node by sign: "
+            f"{side_rk} vs {side_kr} across the axis"
+        )
+
     return DoshaResult(
         name="Kaal Sarpa Dosha",
         is_present=is_present,
         severity=severity,
         cancellation_factors=cancellation,
         description=description,
+        convention="hemmed_strict_or_partial",
+        basis=basis,
     )
 
 
@@ -421,11 +450,20 @@ def _detect_guru_chandal(chart: BirthChart) -> DoshaResult:
 # ---------------------------------------------------------------------------
 
 def _detect_shani(chart: BirthChart) -> DoshaResult:
-    """Detect Shani Dosha (natal Sade Sati indicator).
+    """Detect Shani Dosha — a **natal** indicator, not current Sade Sati.
 
-    Saturn in the 12th, 1st, or 2nd house from the Moon's sign at birth.
-    This is primarily a transit phenomenon, but its presence in the natal
-    chart is noted as a mild indicator.
+    True when Saturn was in the 12th, 1st or 2nd sign from the Moon *at birth*.
+
+    This is emphatically **not** the same question as "is this person in Sade
+    Sati now", which is a transit question answered by
+    ``vedic_calc.chart.sade_sati.calculate_sade_sati(chart, target_date)``.
+    Conflating the two compares a fixed natal fact against a moving transit and
+    will disagree with every other source roughly whenever Saturn has moved —
+    which is most of the time.
+
+    Returns:
+        A mild natal indicator. For "am I in Sade Sati", use the transit
+        function and read ``is_sade_sati``.
     """
     moon_sign = chart.planets[Planet.MOON].sign
     saturn_sign = chart.planets[Planet.SATURN].sign
@@ -442,10 +480,16 @@ def _detect_shani(chart: BirthChart) -> DoshaResult:
         severity="mild" if is_present else "none",
         cancellation_factors=[],
         description=(
-            f"Shani Dosha: Saturn {position_map.get(dist, '')} Moon (natal Sade Sati indicator)."
+            f"Shani Dosha: Saturn {position_map.get(dist, '')} Moon at birth "
+            f"(natal indicator only — not current Sade Sati)."
             if is_present
             else "Shani Dosha not present."
         ),
+        convention="natal_saturn_from_moon",
+        basis=[
+            f"Natal Moon in {moon_sign.name}, natal Saturn in {saturn_sign.name}",
+            f"Saturn is {dist} sign(s) from the Moon, counting the Moon's sign as 1",
+        ],
     )
 
 

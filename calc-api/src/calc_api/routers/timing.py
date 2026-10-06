@@ -215,11 +215,19 @@ async def muhurta_search(req: MuhurtaWindowRequest) -> dict[str, Any]:
 async def sade_sati(req: SadeSatiRequest) -> dict[str, Any]:
     """Report Saturn's transit relative to the natal Moon on a given date.
 
-    Sade Sati proper is Saturn transiting the 12th, 1st or 2nd sign from the
-    natal Moon — roughly seven and a half years. Note that the engine currently
-    also reports Small Panoti (Saturn in the 4th) and Ashtama Shani (the 8th)
-    under the same flag; these are distinct afflictions and the consumer should
-    present them distinctly. See ``docs/accuracy.md``.
+    The three Saturn-over-Moon afflictions are reported as **separate flags**,
+    because they are distinct and of different lengths:
+
+    * ``is_sade_sati`` — Saturn in the 12th, 1st or 2nd from the natal Moon.
+      Roughly 7.5 years. This is what "Sade Sati" means.
+    * ``is_small_panoti`` — Saturn in the 4th (Kantaka Shani). ~2.5 years.
+    * ``is_ashtama_shani`` — Saturn in the 8th. ~2.5 years.
+    * ``is_active`` — the umbrella: true if any of the three applies.
+
+    Present the specific flags, not the umbrella. Telling a user they are in
+    Sade Sati when Saturn is in their 4th will be contradicted by every other
+    app they check. Reference APIs differ here too: AstrologyAPI reports the
+    strict reading, Prokerala the umbrella.
 
     Args:
         req: Birth data and the date to evaluate.

@@ -9,8 +9,17 @@ Covers three types of Saturn-over-Moon transits:
   3. **Ashtama Shani**: Saturn in the 8th sign from Moon.
 
 All three are sign-based (whole-sign transits), not degree-based.
-Prokerala (and many traditional sources) group all three under the
-"Sade Sati" umbrella, so `is_active` is True when ANY of these apply.
+
+Some traditional sources (and Prokerala) group all three under a single
+"Sade Sati" umbrella. ``SadeSatiResult.is_active`` preserves that umbrella
+reading, but the three are *also* reported as separate flags —
+``is_sade_sati``, ``is_small_panoti``, ``is_ashtama_shani`` — because they are
+distinct afflictions of different lengths, and because most other software
+reports them separately. Calling Small Panoti "Sade Sati" to a user puts us in
+direct contradiction with every other app they check.
+
+Prefer the specific flags when presenting a result. See
+``docs/accuracy.md``.
 """
 
 from __future__ import annotations
@@ -26,6 +35,39 @@ def _saturn_sign_at(jd: float, ayanamsa: Ayanamsa) -> int:
     """Get Saturn's sign number (1-12) at a given JD."""
     lon, _ = get_planet_longitude(jd, Planet.SATURN, ayanamsa)
     return int(lon / 30.0) + 1
+
+
+# Sign-distance from the natal Moon to each affliction, 1-based (same sign = 1).
+SADE_SATI_DISTANCES = (12, 1, 2)   # Sade Sati proper, ~7.5 years
+SMALL_PANOTI_DISTANCE = 4          # Kantaka Shani, ~2.5 years
+ASHTAMA_SHANI_DISTANCE = 8         # Ashtama Shani, ~2.5 years
+
+
+def _classify(saturn_sign_num: int, moon_sign: Sign) -> tuple[bool, bool, bool]:
+    """Classify Saturn's transit sign into the three distinct afflictions.
+
+    Args:
+        saturn_sign_num: Saturn's sign as a 1-12 number.
+        moon_sign: The natal Moon's sign.
+
+    Returns:
+        ``(is_sade_sati, is_small_panoti, is_ashtama_shani)``. At most one is
+        True — the three distances are mutually exclusive.
+
+    Example:
+        Natal Moon in Sagittarius (9), Saturn in Pisces (12).
+        Distance = ((12 - 9) % 12) + 1 = 4, so this is Small Panoti, not
+        Sade Sati.
+
+        >>> _classify(12, Sign.SAGITTARIUS)
+        (False, True, False)
+    """
+    dist = ((saturn_sign_num - int(moon_sign)) % 12) + 1
+    return (
+        dist in SADE_SATI_DISTANCES,
+        dist == SMALL_PANOTI_DISTANCE,
+        dist == ASHTAMA_SHANI_DISTANCE,
+    )
 
 
 def _get_saturn_transit_signs(moon_num: int) -> set[int]:
@@ -144,10 +186,12 @@ def calculate_sade_sati(
     target_date: datetime | None = None,
     ayanamsa: Ayanamsa = Ayanamsa.LAHIRI,
 ) -> SadeSatiResult:
-    """Check if Sade Sati (or related Saturn transit affliction) is active.
+    """Check which Saturn-over-Moon affliction, if any, is active on a date.
 
-    Detects Sade Sati proper (12th/1st/2nd from Moon), Small Panoti (4th),
-    and Ashtama Shani (8th). All are sign-based (whole-sign transits).
+    Reports Sade Sati proper (12th/1st/2nd from Moon), Small Panoti (4th) and
+    Ashtama Shani (8th) as **separate flags**, since they are distinct
+    afflictions of different lengths. ``is_active`` is the umbrella: true if any
+    applies. All are sign-based (whole-sign transits), not degree-based.
 
     Args:
         chart: Birth chart (used for Moon sign).
@@ -174,9 +218,13 @@ def calculate_sade_sati(
     saturn_sign = _saturn_sign_at(jd, ayanamsa)
     is_active = saturn_sign in target_signs
     current_phase = _sign_to_phase(saturn_sign, moon_sign) if is_active else None
+    sade_sati, small_panoti, ashtama_shani = _classify(saturn_sign, moon_sign)
 
     return SadeSatiResult(
         is_active=is_active,
+        is_sade_sati=sade_sati,
+        is_small_panoti=small_panoti,
+        is_ashtama_shani=ashtama_shani,
         current_phase=current_phase,
         moon_sign=moon_sign,
         phases=[],  # Phases populated by calculate_sade_sati_periods
@@ -232,9 +280,13 @@ def calculate_sade_sati_periods(
     saturn_sign = _saturn_sign_at(now_jd, ayanamsa)
     is_active = saturn_sign in target_signs
     current_phase = _sign_to_phase(saturn_sign, moon_sign) if is_active else None
+    sade_sati, small_panoti, ashtama_shani = _classify(saturn_sign, moon_sign)
 
     return SadeSatiResult(
         is_active=is_active,
+        is_sade_sati=sade_sati,
+        is_small_panoti=small_panoti,
+        is_ashtama_shani=ashtama_shani,
         current_phase=current_phase,
         moon_sign=moon_sign,
         phases=phases,

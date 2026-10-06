@@ -22,7 +22,10 @@ from calc_api import __version__ as _api_version
 # Bump this by hand whenever a change to the engine or to this service alters
 # any computed output. The git commit below disambiguates builds, but a
 # deliberate marker is what consumers key their caches on.
-ENGINE_REVISION = 1
+# Revision 2: SadeSatiResult gained is_sade_sati / is_small_panoti /
+# is_ashtama_shani, and DoshaResult gained convention / basis. Both change
+# response payloads, so consumer caches must invalidate.
+ENGINE_REVISION = 2
 
 
 @lru_cache(maxsize=1)

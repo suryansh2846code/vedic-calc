@@ -21,6 +21,25 @@ are listed here. See the git history for exact diffs.
 * Added `calc-api/` — a thin, stateless HTTP service exposing the engine's
   public functions as a JSON API. AGPL-3.0, same as the engine.
 
+* `core/types.py`, `chart/sade_sati.py`: `SadeSatiResult` now reports Sade Sati
+  proper, Small Panoti and Ashtama Shani as three separate flags
+  (`is_sade_sati`, `is_small_panoti`, `is_ashtama_shani`) in addition to the
+  existing `is_active` umbrella. Previously all three were collapsed into
+  `is_active`, which disagreed with reference sources that report them
+  separately.
+
+* `core/types.py`, `dosha/calculator.py`: `DoshaResult` gained `convention` and
+  `basis`, so doshas whose definitions are genuinely disputed state which
+  reading they applied and show the computed evidence. Kaal Sarpa and Shani
+  Dosha now populate both. No verdict logic changed.
+
+* `benchmarks/accuracy.py`: added a pinned `REFERENCE_DATE` and removed every
+  clock read from the comparison path. The cached fixtures freeze each reference
+  API's answer to "now" at capture time, so computing "now" from the clock made
+  previously-passing assertions fail months later with no code change. Also
+  corrected two comparisons that compared unlike things — a natal indicator
+  against a current transit, and a strict reading against an umbrella one.
+
 (Further engine modifications will be appended here as they land. Each is also
 offered upstream as a pull request.)
 

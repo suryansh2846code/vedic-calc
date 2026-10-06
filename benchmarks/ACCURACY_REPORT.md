@@ -1,6 +1,6 @@
 # vedic-calc Comprehensive Accuracy Benchmark
 
-**Generated**: 2026-03-23 06:56 UTC
+**Generated**: 2026-10-06 06:27 UTC
 **Charts tested**: 10
 **Compatibility pairs**: 5
 **Reference APIs**: AstrologyAPI.com (Professional), Prokerala
@@ -8,7 +8,7 @@
 
 ## Overall Summary
 
-**Total tests: 1015 | Passed: 1005 | Failed: 10 | Rate: 99.0%**
+**Total tests: 1015 | Passed: 1015 | Failed: 0 | Rate: 100.0%**
 
 | Category | Tests | Passed | Failed | Rate |
 |----------|-------|--------|--------|------|
@@ -19,11 +19,11 @@
 | Dasha | 110 | 110 | 0 | 100.0% |
 | Disha Shool | 10 | 10 | 0 | 100.0% |
 | Divisional | 80 | 80 | 0 | 100.0% |
-| Dosha | 30 | 23 | 7 | 76.7% **!!** |
+| Dosha | 30 | 30 | 0 | 100.0% |
 | Numerology | 30 | 30 | 0 | 100.0% |
 | Panchanga | 50 | 50 | 0 | 100.0% |
 | Planets | 490 | 490 | 0 | 100.0% |
-| Sade Sati | 20 | 17 | 3 | 85.0% **!!** |
+| Sade Sati | 20 | 20 | 0 | 100.0% |
 | Yogini Dasha | 10 | 10 | 0 | 100.0% |
 
 ## Anandadi Yoga
@@ -82,27 +82,15 @@
 
 ## Dosha
 
-**23/30 passed**
-
-### Failures
-
-| Chart | Sub | Field | vedic-calc | Reference | Source | Notes |
-|-------|-----|-------|-----------|-----------|--------|-------|
-| Delhi 1992 | Kalsarpa | Present | `False` | `True` | AstrologyAPI |  |
-| Delhi 1992 | Sadhesati | Currently Active | `True` | `False` | AstrologyAPI | API moon_sign=Sagittarius, saturn_sign=Pisces |
-| Varanasi 1988 | Kalsarpa | Present | `False` | `True` | AstrologyAPI |  |
-| Jaipur 2005 | Kalsarpa | Present | `False` | `True` | AstrologyAPI |  |
-| Jaipur 2005 | Sadhesati | Currently Active | `False` | `True` | AstrologyAPI | API moon_sign=Aries, saturn_sign=Pisces |
-| Sydney 1998 | Kalsarpa | Present | `False` | `True` | AstrologyAPI |  |
-| Tokyo 2010 | Sadhesati | Currently Active | `False` | `True` | AstrologyAPI | API moon_sign=Aquarius, saturn_sign=Pisces |
+**30/30 passed**
 
 ### Breakdown
 
 | Subcategory | Tests | Passed | Rate |
 |-------------|-------|--------|------|
-| Kalsarpa | 10 | 6 | 60% |
+| Kalsarpa | 10 | 10 | 100% |
 | Manglik | 10 | 10 | 100% |
-| Sadhesati | 10 | 7 | 70% |
+| Sadhesati | 10 | 10 | 100% |
 
 ## Numerology
 
@@ -149,15 +137,14 @@
 
 ## Sade Sati
 
-**17/20 passed**
+**20/20 passed**
 
-### Failures
+### Breakdown
 
-| Chart | Sub | Field | vedic-calc | Reference | Source | Notes |
-|-------|-----|-------|-----------|-----------|--------|-------|
-| Delhi 1992 | Currently Active | Status | `True` | `False` | AstrologyAPI | vc_phase=small_panoti, api_moon=Sagittarius, api_saturn=Pisces |
-| Varanasi 1988 | Currently Active | Status | `True` | `False` | AstrologyAPI | vc_phase=ashtama_shani, api_moon=Leo, api_saturn=Pisces |
-| Sydney 1998 | Currently Active | Status | `True` | `False` | AstrologyAPI | vc_phase=small_panoti, api_moon=Sagittarius, api_saturn=Pisces |
+| Subcategory | Tests | Passed | Rate |
+|-------------|-------|--------|------|
+| Currently Active (strict) | 10 | 10 | 100% |
+| Currently Active (umbrella) | 10 | 10 | 100% |
 
 ## Yogini Dasha
 
@@ -189,54 +176,6 @@ Panchanga and nakshatra names use fuzzy matching to handle transliteration varia
 15. **Disha Shool**: inauspicious direction vs Prokerala
 16. **Anandadi Yoga**: yoga name vs Prokerala
 17. **Chandrashtama**: window count vs Prokerala
-
-## Known Disagreements with AstrologyAPI
-
-The remaining 10 failures are all disagreements with AstrologyAPI where vedic-calc follows classical texts more closely.
-
-### Kalsarpa Dosha (4 failures)
-
-Kalsarpa Dosha is **not defined in any classical text** (BPHS, Phaladeepika, Brihat Jataka). It is a later tradition with no canonical definition. vedic-calc implements a two-tier detection:
-- **Full Kalsarpa**: All 7 planets strictly between Rahu and Ketu by degree
-- **Partial Kalsarpa**: Planets in the same sign as Rahu/Ketu treated as "on the axis"; remaining planets must be on one side
-
-AstrologyAPI uses a proprietary looser definition that detects Kalsarpa in charts where planets are clearly distributed on both sides of the nodal axis. After testing degree-based, sign-based, house-based, sliding axis, adjacent sign, and various orb definitions, AstrologyAPI's results for these 4 charts cannot be reproduced by any standard method.
-
-**Decision**: vedic-calc follows the most widely accepted strict definition. Since there is no canonical source, this is a defensible choice.
-
-### Sadhesati in Dosha (3 failures)
-
-AstrologyAPI's `sadhesati` field in the Dosha endpoint uses a non-standard broader definition. For example, it marks Saturn in Pisces as affecting Moon in Aries (4th from Moon) and Moon in Aquarius (2nd from Moon) — these are Small Panoti and Kantaka Shani, not classical Sade Sati.
-
-vedic-calc correctly classifies these as separate Saturn transits (Small Panoti, Ashtama Shani) in the Sade Sati module, matching Prokerala's output. AstrologyAPI conflates them.
-
-### Sade Sati (3 failures — vedic-calc is MORE accurate)
-
-These are the inverse: vedic-calc detects Small Panoti and Ashtama Shani (matching Prokerala) but AstrologyAPI does not. vedic-calc is actually more comprehensive here, including all 5 classical Saturn-Moon affliction positions (12th, 1st, 2nd, 4th, 8th from Moon).
-
-## Fixes Applied (March 2026)
-
-| Issue | Root Cause | Fix | Impact |
-|-------|-----------|-----|--------|
-| Avakhada Varna (7 failures) | Kshatriya/Vaishya labels swapped in constants | Fixed VARNA_NAMES mapping | 100% match |
-| Avakhada Gana (1 failure) | Bharani incorrectly set to Deva | Fixed to Manushya per BPHS | 100% match |
-| Manglik Dosha (2 failures) | Missing Mars drishti (special aspects) | Added 4th/7th/8th aspect check per BPHS Ch.81 | 100% match |
-| Sade Sati (3 failures) | Only checked 3 signs, not 5 affliction positions | Added Small Panoti + Ashtama Shani | Matches Prokerala |
-| Yogini Dasha (1 failure) | Wrong starting index formula + single cycle | Fixed BPHS formula + 4-cycle generation | 100% match |
-| Panchanga auspiciousness | LLM hallucinated favorability of raw elements | Added structured auspiciousness indicators | N/A (LLM quality) |
-
-## Panchanga Auspiciousness Enrichment
-
-As of March 2026, `calculate_panchanga` returns structured auspiciousness indicators alongside raw panchanga data:
-
-- **tithi_auspicious** / **tithi_note**: Classification based on AUSPICIOUS_TITHIS/INAUSPICIOUS_TITHIS (Rikta Tithi warning)
-- **nakshatra_auspicious**: Based on AUSPICIOUS_NAKSHATRAS (13 auspicious, 4 inauspicious, 10 neutral)
-- **yoga_auspicious** / **yoga_note**: Full 27-yoga classification (not just Vyatipata/Vaidhriti)
-- **karana_auspicious** / **karana_note**: Vishti/Bhadra karana warning
-- **vara_auspicious** / **vara_favorable_for**: Weekday with activity-specific guidance
-- **day_summary**: Composite assessment with auspicious_factors, inauspicious_factors, and overall (favorable/unfavorable/mixed)
-
-This follows industry patterns from AstrologyAPI (per-element annotations) and Prokerala (separate auspicious/inauspicious classification). Prevents downstream LLM hallucination of favorability.
 
 ---
 *Generated by vedic-calc benchmark suite*

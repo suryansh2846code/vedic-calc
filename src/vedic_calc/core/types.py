@@ -550,12 +550,22 @@ class DoshaResult(BaseModel, frozen=True):
         severity: "none", "mild", "moderate", or "severe".
         cancellation_factors: Reasons why the dosha may be cancelled.
         description: Brief description.
+        convention: Which definition was applied, for doshas where traditions
+            genuinely disagree (notably Kaal Sarpa, which appears in no
+            classical text and is defined differently by different sources).
+            None where there is no meaningful dispute. Surface this next to the
+            result rather than presenting a contested verdict as settled fact.
+        basis: The computed evidence behind the verdict, as short human-readable
+            strings. Lets a caller show *why* rather than only *what*, and makes
+            a disagreement with other software diagnosable instead of mysterious.
     """
     name: str
     is_present: bool
     severity: str
     cancellation_factors: list[str]
     description: str
+    convention: str | None = None
+    basis: list[str] = []
 
 
 # ---------------------------------------------------------------------------
@@ -1095,9 +1105,43 @@ class SadeSatiPhase(BaseModel, frozen=True):
 
 
 class SadeSatiResult(BaseModel, frozen=True):
-    """Sade Sati analysis result."""
+    """Saturn-over-Moon transit affliction analysis.
+
+    Three *distinct* afflictions are reported separately, because they are
+    different things and most other software reports them separately too.
+    Telling someone they are in Sade Sati when Saturn is actually in the 4th
+    from their Moon will be contradicted by every other app and by any
+    astrologer they ask.
+
+        Sade Sati proper  Saturn in the 12th, 1st or 2nd from the natal Moon.
+                          ~7.5 years. This is what "Sade Sati" means.
+        Small Panoti      Saturn in the 4th from the natal Moon (Kantaka
+                          Shani). ~2.5 years.
+        Ashtama Shani     Saturn in the 8th from the natal Moon. ~2.5 years.
+
+    Worked example: natal Moon in Sagittarius, Saturn transiting Pisces.
+    Pisces is the 4th from Sagittarius, so ``is_small_panoti`` is True while
+    ``is_sade_sati`` is False.
+
+    Attributes:
+        is_active: True if *any* of the three applies. Retained because some
+            traditional sources group them under one umbrella, and for
+            backwards compatibility — but prefer the specific flags when
+            presenting a result to a user.
+        is_sade_sati: Sade Sati proper (12th / 1st / 2nd from Moon).
+        is_small_panoti: Small Panoti / Kantaka Shani (4th from Moon).
+        is_ashtama_shani: Ashtama Shani (8th from Moon).
+        current_phase: "rising", "peak", "setting", "small_panoti",
+            "ashtama_shani", or None when nothing applies.
+        moon_sign: The natal Moon's sign, which all of the above is relative to.
+        phases: Dated periods, when computed by
+            ``calculate_sade_sati_periods``.
+    """
     is_active: bool
-    current_phase: str | None = None  # "rising", "peak", "setting", or None
+    is_sade_sati: bool = False
+    is_small_panoti: bool = False
+    is_ashtama_shani: bool = False
+    current_phase: str | None = None
     moon_sign: Sign
     phases: list[SadeSatiPhase]
 
